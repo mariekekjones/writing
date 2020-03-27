@@ -1,53 +1,172 @@
 ---
-title: "DataViz"
-author: "Data and Research Services"
+title: "How Humans See Data"
+author: "Marieke Jones"
 date: "3/5/2020"
 output: html_document
 ---
 
+This repository hosts code creating all the plots in my presentation How Humans See Data, originally presented as a Learning Shot for iTHRIV at the University of Virginia.
+
+The code these plots are based on is from John Rauser's How Humans See Data, presented at [Velocity Amsterdam 2016](http://conferences.oreilly.com/velocity/devops-web-performance-eu/public/schedule/detail/54354). Original code on github at [https://github.com/jrauser/writing/tree/master/how_humans_see_data](https://github.com/jrauser/writing/tree/master/how_humans_see_data).
+
 ```{r}
 library(tidyverse)
+library(viridis)
+library(ggrepel)
 ```
 
-# Intro
+# Part 1: Why visualize at all?
 
-Create X Y dataset that makes a cat
+## A cat
+
+Showing these data as a table 
 
 ```{r}
 cat <- tibble(i = c(1,2,3,4),
               x = c(1,2,3,4),
-              y = c(1,2,3,4))
+              y = c(1.5,2.5,3.5,4.5))
 ```
 
-Make a boring picture of i against x and y 
+Make a boring picture of i against x and y. Does not show the intended relationship between X and Y
 
 ```{r}
-
+cat %>%
+  pivot_longer(cols = c(x,y), names_to = "var", values_to = "value") %>%
+  ggplot() + 
+  geom_line(aes(i, value, col = var), size = 2) +
+  theme_bw() +
+  scale_color_manual(values = c("midnightblue", "chocolate2"))
 ```
 
-Make the cat
+Make the cat. Showing these data in a scatterplot makes the relationship obivous pre-attentively.
 
 ```{r}
-
+ggplot(cat, aes(x,y)) + 
+  geom_point(col = "midnightblue", size=2) + 
+  coord_equal() +
+  theme_bw()
 ```
 
-# Hue
+## Hue
 
-TB dataset countries by average tb incidence -- Alphabetical sort
+Hue encodes TB incidence per 100k
+TB dataset African countries by average tb incidence per 100K -- Alphabetical sort
 
 ```{r}
 tb <- read_csv("tb.csv")
 
-tb %>%
-  group_by(country) %>%
-  summarize(Incidence_TB_100k = mean(incidence_100k, na.rm = TRUE)) %>%
-  ggplot(aes(country, Incidence_TB_100k)) + 
-```
+# shorten two longest country names
+tb <- tb %>%
+  mutate(country = forcats::fct_recode(country, 
+                          Tanzania = "United Republic of Tanzania",
+                          DRC = "Democratic Republic of the Congo"))
 
+?revalue
+
+tb %>%
+  filter(who_region == "AFR") %>%
+  group_by(country) %>%
+  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+  ggplot(aes("a", country, fill = TBper100k)) + 
+  geom_tile() + 
+  scale_fill_viridis() + 
+  theme_classic() +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
 
 Reorderd intellegently
 
-# Saturation of one level
+```{r}
+tb %>%
+  filter(who_region == "AFR") %>%
+  group_by(country) %>%
+  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+  ggplot(aes("a", reorder(country, TBper100k), fill = TBper100k)) + 
+  geom_tile() + 
+  scale_fill_viridis() + 
+  theme_classic() +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
 
-With default
-With scale starting at 0
+## Saturation of one level
+
+Ordered and with default "low" value
+
+```{r}
+tb %>%
+  filter(who_region == "AFR") %>%
+  group_by(country) %>%
+  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+  ggplot(aes("a", reorder(country, TBper100k), fill = TBper100k)) + 
+  geom_tile() + 
+  scale_fill_gradient(low="white", high=muted("blue")) +
+  theme_classic() +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+
+Now with 0 as white
+For accurate ratioing with saturation, the scale has to extend to zero.
+
+```{r}
+tb %>%
+  filter(who_region == "AFR") %>%
+  group_by(country) %>%
+  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+  ggplot(aes("a", reorder(country, TBper100k), fill = TBper100k)) + 
+  geom_tile() + 
+  scale_fill_gradient(low="white", high=muted("blue")) +
+  expand_limits(fill = 0) +
+  theme_classic() +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+# what is the incidence in Mauritius?
+tb %>%
+  filter(who_region == "AFR") %>%
+  group_by(country) %>%
+  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+  arrange(TBper100k)
+# 12.8
+```
+
+## Area
+
+```{r}
+#remove two countries to make an even grid of 45 countries
+tb_ordered <- tb %>%
+  filter(who_region == "AFR") %>%
+  filter(country != "Angola" & country != "Senegal") %>%  
+  group_by(country) %>%
+  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+  mutate(country = reorder(country, TBper100k)) %>%
+  arrange(TBper100k, country)
+
+tb_ordered
+
+tb_ordered %>%
+  ggplot(aes(rep(1:5, 9), rep(1:9, each = 5))) +
+  geom_point(aes(size = TBper100k)) +
+  geom_text(aes(label = country), position = position_nudge(y=0.5), size=2) +
+  expand_limits(x=c(0.5,5.5), y=c(1,8.5)) + 
+  ylab(NULL) + 
+  scale_size_area() +
+  theme_classic() +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+```
+

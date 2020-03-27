@@ -61,7 +61,7 @@ theme_preso<-theme_dark(base_size=theme_base_size) %+replace%
 )
 theme_set(theme_preso)
 
-preso_save<-function(filename, plot=last_plot(), theme=theme_preso, width=1280/300, height=720/300, dpi=300) {
+preso_save <- function(filename, plot=last_plot(), theme=theme_preso, width=1280/300, height=720/300, dpi=300) {
   ggsave(filename, plot+theme, width=width, height=height, dpi=dpi)
 }
 ```
@@ -208,10 +208,15 @@ theme_extras <- theme(axis.title=element_blank(),
                       legend.position="none")
 
 ggplot(values, aes(val,y,fill=val)) + geom_tile() + scale_fill_gradient(low="black", high="white", limits=c(0,6)) + theme_extras
+
 preso_save("~/hhsd_images/luminance.png", height=720/300/3, theme=theme_preso + theme_extras)
+
 ggplot(values, aes(val,y,fill=val)) + geom_tile() + scale_fill_gradient(low="white", high="red", limits=c(0,6)) + theme_extras
+
 preso_save("~/hhsd_images/saturation.png", height=720/300/3, theme=theme_preso + theme_extras)
+
 ggplot(values, aes(val,y,fill=factor(val))) + geom_tile() + scale_fill_discrete() + theme_extras
+
 preso_save("~/hhsd_images/hue.png", height=720/300/3, theme=theme_preso + theme_extras)
 ```
 
@@ -230,6 +235,7 @@ The viridis hue scale.  I didn't end up using this in the presentation.  I proba
 
 ```{r}
 ggplot(mtcars, aes("a", model, fill=mpg))+geom_tile()+scale_fill_viridis()
+
 ggplot(mtcars, aes("a", reorder(model, mpg), fill=mpg))+geom_tile()+scale_fill_viridis()
 ```
 
@@ -303,6 +309,7 @@ ggplot(mtcars, aes(rep(1:cols, 32/cols), rep(1:(32/cols), each=cols))) +
   geom_point(aes(size=mpg), color="white") + 
   geom_text(aes(label=model), color="white", position=position_nudge(y=0.5), size=2) +
   expand_limits(x=c(0.5,4.5), y=c(1,8.5))+ ylab(NULL) + scale_size_area() + theme_extras 
+
 preso_save("~/hhsd_images/mtcars_area.png", theme=theme_preso+theme_extras)
 ```
 
