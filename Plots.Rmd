@@ -1,0 +1,53 @@
+---
+title: "DataViz"
+author: "Data and Research Services"
+date: "3/5/2020"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+# Intro
+
+Create X Y dataset that makes a cat
+
+```{r}
+cat <- tibble(i = c(1,2,3,4),
+              x = c(1,2,3,4),
+              y = c(1,2,3,4))
+```
+
+Make a boring picture of i against x and y 
+
+```{r}
+
+```
+
+Make the cat
+
+```{r}
+
+```
+
+# Hue
+
+TB dataset countries by average tb incidence -- Alphabetical sort
+
+```{r}
+tb <- read_csv("tb.csv")
+
+tb %>%
+  group_by(country) %>%
+  summarize(Incidence_TB_100k = mean(incidence_100k, na.rm = TRUE)) %>%
+  ggplot(aes(country, Incidence_TB_100k)) + 
+```
+
+
+Reorderd intellegently
+
+# Saturation of one level
+
+With default
+With scale starting at 0
