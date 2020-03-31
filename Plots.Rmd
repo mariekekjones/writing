@@ -12,6 +12,7 @@ The code these plots are based on is from John Rauser's How Humans See Data, pre
 ```{r}
 library(tidyverse)
 library(viridis)
+library(scales)
 library(ggrepel)
 ```
 
@@ -22,35 +23,82 @@ library(ggrepel)
 Showing these data as a table 
 
 ```{r}
-cat <- tibble(i = c(1,2,3,4),
-              x = c(1,2,3,4),
-              y = c(1.5,2.5,3.5,4.5))
+cat <- read_csv("cat.csv")
+cat
 ```
 
-Make a boring picture of i against x and y. Does not show the intended relationship between X and Y
+Make a boring picture of i against a and b. Does not show the intended relationship between A and B
 
 ```{r}
 cat %>%
-  pivot_longer(cols = c(x,y), names_to = "var", values_to = "value") %>%
+  pivot_longer(cols = c(a,b), names_to = "var", values_to = "value") %>%
   ggplot() + 
   geom_line(aes(i, value, col = var), size = 2) +
   theme_bw() +
-  scale_color_manual(values = c("midnightblue", "chocolate2"))
+  scale_color_manual(values = c("midnightblue", "chocolate2")) +
+  labs(color = "")
+
+ggsave("plots/01_cat_lines.png", width = 5, height = 3.5)
 ```
 
 Make the cat. Showing these data in a scatterplot makes the relationship obivous pre-attentively.
 
 ```{r}
-ggplot(cat, aes(x,y)) + 
+ggplot(cat, aes(a,b)) + 
   geom_point(col = "midnightblue", size=2) + 
   coord_equal() +
-  theme_bw()
+  theme_classic()
+
+ggsave("plots/02_cat.png", width = 5, height = 3.5)
 ```
+
+# Color
+
+Really made up of 3 channels
+
+```{r}
+values <- data.frame(val = 1:5, y = 1)
+
+ggplot(values, aes(val,y,fill=val)) + 
+  geom_tile() + 
+  scale_fill_gradient(low="black", high="white", limits=c(0,6)) +
+  theme_classic() +
+  theme(axis.title = element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        legend.position="none")
+
+ggsave("plots/02_01_luminance.png", height = 3.5/3, width = 5)
+
+ggplot(values, aes(val,y,fill=val)) + 
+  geom_tile() + 
+  scale_fill_gradient(low="white", high="red", limits=c(0,6)) +
+  theme_classic() +
+  theme(axis.title = element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        legend.position="none")
+
+ggsave("plots/02_02_saturation.png", height = 3.5/3, width = 5)
+
+ggplot(values, aes(val,y,fill=factor(val))) + 
+  geom_tile() + 
+  scale_fill_discrete() + 
+  theme_classic() +
+  theme(axis.title = element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        legend.position="none")
+
+ggsave("plots/02_03_color.png", height = 3.5/3, width = 5)
+
+```
+
 
 ## Hue
 
 Hue encodes TB incidence per 100k
-TB dataset African countries by average tb incidence per 100K -- Alphabetical sort
+TB dataset showing African countries by average tb incidence per 100K -- Alphabetical sort
 
 ```{r}
 tb <- read_csv("tb.csv")
@@ -61,12 +109,27 @@ tb <- tb %>%
                           Tanzania = "United Republic of Tanzania",
                           DRC = "Democratic Republic of the Congo"))
 
-?revalue
-
-tb %>%
+# create summary table that we'll use for many plots
+AFR_sum <- tb %>%
   filter(who_region == "AFR") %>%
   group_by(country) %>%
-  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE))
+
+# using hue without a natural order
+AFR_sum %>%
+  ggplot(aes("a", country, fill = TBper100k)) + 
+  geom_tile() + 
+  scale_fill_gradient2(midpoint=median(AFR_sum$TBper100k), mid="#ffffbf", low="#fc8d59", high="#91bfdb") +
+  theme_classic() +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_text(size=6),
+        axis.ticks.x=element_blank())
+ggsave("plots/03_tb_hue1.png", width = 5, height = 3.5)
+
+# using viridis hue scale which has intuitive order due to added channel of color luminance
+ AFR_sum %>%
   ggplot(aes("a", country, fill = TBper100k)) + 
   geom_tile() + 
   scale_fill_viridis() + 
@@ -74,16 +137,28 @@ tb %>%
   theme(axis.title.x=element_blank(),
         axis.title.y=element_blank(),
         axis.text.x=element_blank(),
+        axis.text.y=element_text(size=6),
         axis.ticks.x=element_blank())
+ggsave("plots/03_tb_hue2.png", width = 5, height = 3.5)
 ```
 
 Reorderd intellegently
 
 ```{r}
-tb %>%
-  filter(who_region == "AFR") %>%
-  group_by(country) %>%
-  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+AFR_sum %>%
+  ggplot(aes("a", reorder(country, TBper100k), fill = TBper100k)) + 
+  geom_tile() + 
+  scale_fill_gradient2(midpoint=median(AFR_sum$TBper100k), mid="#ffffbf", low="#fc8d59", high="#91bfdb") +
+  theme_classic() +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_text(size=6),
+        axis.ticks.x=element_blank())
+
+ggsave("plots/04_tb_hue1_ordered.png", width = 5, height = 3.5)
+
+AFR_sum %>%
   ggplot(aes("a", reorder(country, TBper100k), fill = TBper100k)) + 
   geom_tile() + 
   scale_fill_viridis() + 
@@ -91,18 +166,17 @@ tb %>%
   theme(axis.title.x=element_blank(),
         axis.title.y=element_blank(),
         axis.text.x=element_blank(),
+        axis.text.y=element_text(size=6),
         axis.ticks.x=element_blank())
+ggsave("plots/04_tb_hue2_ordered.png", width = 5, height = 3.5)
 ```
 
-## Saturation of one level
+## Saturation of one color
 
 Ordered and with default "low" value
 
 ```{r}
-tb %>%
-  filter(who_region == "AFR") %>%
-  group_by(country) %>%
-  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+AFR_sum %>%
   ggplot(aes("a", reorder(country, TBper100k), fill = TBper100k)) + 
   geom_tile() + 
   scale_fill_gradient(low="white", high=muted("blue")) +
@@ -110,17 +184,17 @@ tb %>%
   theme(axis.title.x=element_blank(),
         axis.title.y=element_blank(),
         axis.text.x=element_blank(),
+        axis.text.y=element_text(size=6),
         axis.ticks.x=element_blank())
+
+ggsave("plots/05_tb_saturation.png", width = 5, height = 3.5)
 ```
 
 Now with 0 as white
 For accurate ratioing with saturation, the scale has to extend to zero.
 
 ```{r}
-tb %>%
-  filter(who_region == "AFR") %>%
-  group_by(country) %>%
-  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+AFR_sum %>%
   ggplot(aes("a", reorder(country, TBper100k), fill = TBper100k)) + 
   geom_tile() + 
   scale_fill_gradient(low="white", high=muted("blue")) +
@@ -129,13 +203,14 @@ tb %>%
   theme(axis.title.x=element_blank(),
         axis.title.y=element_blank(),
         axis.text.x=element_blank(),
+        axis.text.y=element_text(size=6),
         axis.ticks.x=element_blank())
 
+ggsave("plots/06_tb_saturation_zero.png", width = 5, height = 3.5)
+
+
 # what is the incidence in Mauritius?
-tb %>%
-  filter(who_region == "AFR") %>%
-  group_by(country) %>%
-  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE)) %>%
+AFR_sum %>%
   arrange(TBper100k)
 # 12.8
 ```
@@ -160,7 +235,7 @@ tb_ordered %>%
   geom_text(aes(label = country), position = position_nudge(y=0.5), size=2) +
   expand_limits(x=c(0.5,5.5), y=c(1,8.5)) + 
   ylab(NULL) + 
-  scale_size_area() +
+  scale_size_area() + #with zero as zero incidence
   theme_classic() +
   theme(axis.title.x=element_blank(),
         axis.title.y=element_blank(),
@@ -168,5 +243,51 @@ tb_ordered %>%
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
+ggsave("plots/07_tb_area.png", width = 5, height = 4)
+
+```
+
+Accurate ratioing depends on a scale that goes to zero, so making sure that that is the case for this plot is important
+
+## Angle
+
+Again, note that the scale goes to zero (a horizontal line).
+
+```{r}
+make_segment <- function(df, scale_low, scale_high) {
+  scale_range <- scale_high-scale_low
+  fraction <- (df$TBper100k-scale_low) / scale_range
+  theta <- fraction * pi/2
+  return(data.frame(x=c(0, cos(theta)),
+                    y=c(0, sin(theta))))
+}
+
+tb_angle <- AFR_sum %>%
+  filter(country != "Angola" & country != "Senegal") %>%
+  group_by(country) %>%
+  do(make_segment(., 0, 1057.333)) %>%
+  ungroup()
+
+ggplot(tb_angle, aes(x, y, group=country))+
+  geom_path() +
+  facet_wrap(~country, ncol = 9) + coord_equal()
+
+# reorder country and clean up the plot
+tb_angle %>%
+  mutate(country = factor(country, levels = unique(tb_ordered$country))) %>%
+  ggplot(aes(x, y, group=country))+
+  geom_path() +
+  facet_wrap(~country, ncol = 9) + 
+  coord_equal() +
+  theme_classic() +
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        strip.text.x = element_text(size = 5))
+
+ggsave("plots/08_tb_angle.png", width = 7, height = 4)
 ```
 
