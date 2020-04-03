@@ -243,7 +243,7 @@ tb_ordered %>%
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())
-ggsave("plots/07_tb_area.png", width = 5, height = 4)
+ggsave("plots/07_tb_area.png", width = 5, height = 3.5)
 
 ```
 
@@ -279,7 +279,7 @@ tb_angle %>%
   geom_path() +
   facet_wrap(~country, ncol = 9) + 
   coord_equal() +
-  theme_classic() +
+  theme_bw() +
   theme(axis.title.x=element_blank(),
         axis.title.y=element_blank(),
         axis.text.x=element_blank(),
@@ -288,6 +288,450 @@ tb_angle %>%
         axis.ticks.y=element_blank(),
         strip.text.x = element_text(size = 5))
 
-ggsave("plots/08_tb_angle.png", width = 7, height = 4)
+ggsave("plots/08_tb_angle.png", width = 5, height = 3.5)
+```
+
+Angle plot that we look at all the time
+```{r}
+tb %>%
+  group_by(who_region, year) %>%
+  summarise(population = mean(pop)/1e6) %>%
+  ggplot(aes(year, population, color = who_region)) +
+  geom_smooth(method = "lm", se = FALSE) + 
+  scale_y_log10(labels = comma) +
+  theme_bw() +
+  labs(x = NULL, y = "Population (Millions)", color = "Region")
+
+ggsave("plots/08_tb_pop_angle.png", width = 5, height = 3.5)
+```
+
+## Length
+
+Length not on a common scale. Add a bit of random jitter to the position of the beginning of the bar
+
+```{r}
+# not ordered
+AFR_sum$random <- runif(n = 47, min = 0, max = 100)
+
+AFR_sum %>%
+  ggplot(aes(x=random, xend=TBper100k + random, y = country, yend = country)) +
+  geom_segment(size = 2) + xlab(NULL) + ylab(NULL) + theme_bw() + theme(axis.text.y=element_text(size=6))
+
+ggsave("plots/09_tb_length.png", width = 5, height = 3.5)
+
+# ordered
+tb_ordered$random <- runif(n = 45, min = 0, max = 100)
+
+tb_ordered %>%
+  ggplot(aes(x=random, xend=TBper100k + random, y = country, yend = country)) +
+  geom_segment(size = 2) + 
+  theme_bw() + 
+  theme(axis.text.y=element_text(size=6),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+ggsave("plots/09_tb_length.png", width = 5, height = 3.5)
+```
+
+Looking at length not on common baseline is actually quite common
+
+```{r}
+countries <- c("Togo", "Rwanda", "Sao Tome and Principe", "Eritrea", "Niger", "Equatorial Guinea", "Mauritania", "Burundi", "Ghana", "Guinea")
+
+AFR_error <- tb %>%
+  filter(who_region == "AFR") %>%
+  filter(country %in% countries) %>%
+  group_by(country) %>%
+  summarize(TBper100k = mean(incidence_100k, na.rm = TRUE),
+            SD_TB = sd(incidence_100k, na.rm = TRUE)) %>%
+  mutate(country = reorder(country, TBper100k)) %>%
+  arrange(TBper100k, country)
+
+ggplot(AFR_error, aes(x = country, y = TBper100k)) +
+  geom_pointrange(aes(ymin = TBper100k - SD_TB, 
+                      ymax = TBper100k + SD_TB)) +
+  theme_bw() +
+  coord_flip() +
+  theme(axis.title.y=element_blank())
+  
+ggsave("plots/10_tb_length_error.png", width = 5, height = 3.5)
+```
+
+## Position on misaligned scales
+
+```{r}
+tb_ordered %>%
+  head(25) %>%
+  ggplot(aes(x = TBper100k, y="a")) +
+  geom_point(size = 2) + 
+  scale_x_continuous() +
+  facet_wrap(~country, ncol=5) +
+  theme_bw() + 
+  theme(strip.text.x = element_text(size = 8),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 6),
+        axis.ticks.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(colour = "grey80", size = 0.4),
+        panel.grid.minor.x = element_line(colour = "grey80", size = 0.4, linetype="dotted"))
+
+ggsave("plots/11_tb_position_facet.png", width = 5, height = 3.5)
+
+```
+
+Time series faceted on same but misaligned scale
+
+```{r}
+tb %>%
+  filter(who_region == "WPR") %>%
+  filter(country== "Niue" | country == "Tuvalu") %>%
+  ggplot(aes(year, incidence_100k)) + 
+  geom_line(aes(group = country, color = country), size = 1.5) +
+  facet_wrap(~country) +
+  theme_bw() + 
+  labs(y = "TB Incidence per 100K") +
+  theme(strip.text.x = element_text(size = 10),
+        axis.text.x = element_text(size = 8),
+        axis.title.x = element_blank(),
+        legend.position = "none")
+
+ggsave("plots/12_tb_time_facet.png", width = 5, height = 3.5)
+```
+
+## Position on common scale
+
+```{r}
+ggplot(tb_ordered, aes(x = TBper100k, y = country)) + 
+  geom_point() +
+  theme_bw() + 
+  labs(x = "TB Incidence per 100K") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 6))
+
+ggsave("plots/13_tb_point.png", width = 5, height = 3.5)
+
+# unordered
+AFR_sum %>%
+  filter(country != "Angola" & country != "Senegal") %>%
+  ggplot(aes(x = TBper100k, y = country)) + 
+  geom_point() +
+  theme_bw() + 
+  labs(x = "TB Incidence per 100K") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 6))
+
+ggsave("plots/14_tb_point_unordered.png", width = 5, height = 3.5)
+```
+
+Should we include zero?
+
+On the tb plot we did because the range of incidence was roughly 12 - 1200. In a different dataset, zero is not necessary
+```{r}
+mtcars %>%
+  mutate(model = reorder(model, mpg)) %>%
+  arrange(mpg, model) %>%
+  ggplot(aes(x=mpg, y=model)) + 
+  geom_point() + 
+  ylab(NULL) + 
+  expand_limits(x=0) +
+  theme_bw() + 
+  labs(x = "Miles per gallon") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 6))
+
+ggsave("plots/15_cars_point_zero.png", width = 5, height = 3.5)
+```
+
+# Other Observations
+
+## Stacked anything is nearly always a mistake
+
+A stacked bar chart does two things, neither of them well.
+
+```{r}
+ggplot(diamonds, aes(clarity, fill=cut, group=cut)) + 
+  geom_bar(stat="count", position="stack") +
+  scale_y_continuous("Count", labels=comma) +
+  theme_classic()
+
+ggsave("plots/16_diamonds_stacked.png", width = 5, height = 3.5)
+```
+
+Instead, let's see the same plot with parallel lines
+
+```{r}
+diamonds_summary <- diamonds %>%
+  group_by(clarity, cut) %>%
+  summarize(n = n())
+
+ggplot(diamonds_summary, aes(clarity, n, color=cut, group=cut)) + 
+  geom_line(lwd = 1.25) + 
+  geom_point(size = 2) + 
+  scale_y_continuous("Count", labels=comma) +
+  theme_classic()
+
+ggsave("plots/17_diamonds_parallel.png", width = 5, height = 3.5)
+
+# total count per clarity/cut class
+diamonds_tot <- diamonds %>%
+  group_by(clarity) %>%
+  summarize(n=n())
+
+ggplot() + 
+  geom_line(data = diamonds_summary, aes(clarity, n, color=cut, group=cut), lwd = 1.25) + 
+  geom_point(data = diamonds_summary, aes(clarity, n, color=cut, group=cut), size = 2) + 
+  geom_line(data = diamonds_tot, aes(clarity, n), group=1, lwd = 1.25, color = "gray50") + 
+  geom_point(data = diamonds_tot, aes(clarity, n), size = 2, color = "gray50") +
+  scale_y_continuous("Count", labels=comma) +
+  theme_classic()
+
+ggsave("plots/18_diamonds_total.png", width = 5, height = 3.5)
+
+```
+
+# Part 3: Assembly
+
+## The Law of Similarity
+
+Color is pretty good
+
+```{r}
+# Make number of cylinders a factor, so ggplot will choose a discrete scale.
+mtcars$cyl <- factor(mtcars$cyl)
+
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point(aes(color=cyl), size = 2.5) + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  scale_color_viridis_d("Cylinders") +
+  theme_classic()
+
+ggsave("plots/19_cars_color.png", width = 5, height = 3.5)
+
+```
+
+Shape can be ok, but choose wisely
+
+```{r}
+# closed shapes
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point(aes(shape=cyl), size = 2.5) + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  scale_shape("Cylinders") +
+  theme_classic()
+
+ggsave("plots/20_cars_shape.png", width = 5, height = 3.5)
+
+# open shapes
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point(aes(shape=cyl), size = 2.5) + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  scale_shape_manual("Cylinders", values = c(3,2,1)) +
+  theme_classic()
+
+ggsave("plots/21_cars_shape.png", width = 5, height = 3.5)
+```
+
+You'd think this would be a great encoding, but it's terrible because of the similar curvature of the sixes and eights.
+
+```{r}
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point(aes(shape=cyl), size = 2.5) + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  scale_shape_manual("Cylinders", values = c(52,54,56)) +
+  theme_classic()
+
+ggsave("plots/21A_cars_shape2.png", width = 5, height = 3.5)
+```
+
+Encode information in 2 channels: hue and shape
+
+```{r}
+# open shapes
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point(aes(shape=cyl, color = cyl), size = 2.5) + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  scale_shape_manual("Cylinders", values = c(3,2,1)) +
+  scale_color_viridis_d("Cylinders") +
+  theme_classic()
+
+ggsave("plots/22_cars_hue_shape.png", width = 5, height = 3.5)
+```
+
+Overlaying linear fits encloses space and makes the grouped objects very strong.
+
+```{r}
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point(aes(shape=cyl, color=cyl), size = 2.5) + 
+  geom_smooth(aes(group=cyl, color=cyl), method="lm") + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  scale_shape_manual("Cylinders", values = c(3,2,1)) +
+  scale_color_viridis_d("Cylinders") +
+  theme_classic()
+
+ggsave("plots/23_cars_hue_shape.png", width = 5, height = 3.5)
+```
+
+Law of proximity
+
+```{r}
+ggplot(diamonds, aes(clarity, fill=cut, group=cut)) + 
+  geom_bar(stat="count", position="dodge") +
+  scale_y_continuous("Count", labels=comma) +
+  theme_classic()
+
+ggsave("plots/24_diamonds_grouped.png", width = 5, height = 3.5)
+```
+
+# Detection
+
+Each point is a car
+```{r}
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point(size = 2.5) + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  theme_classic()
+
+ggsave("plots/25_detection.png", width = 5, height = 3.5)
+```
+
+Each point is a country year
+```{r}
+set.seed(403)
+tb %>%
+  sample_n(300) %>%
+  ggplot(aes(pop/1e6, incidence_100k)) + 
+  geom_point() + 
+  xlab("Population (Millions)") +
+  ylab("TB incidence per 100k") +
+  scale_x_log10(labels = comma) +
+  theme_bw()
+
+ggsave("plots/26_TB_detection.png", width = 5, height = 3.5)
+```
+
+Too little luminance in the points
+
+```{r}
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point(size = 2.5, color = "gray90") + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  theme_classic()
+
+ggsave("plots/27_detection.png", width = 5, height = 3.5)
+```
+
+Too small points
+
+```{r}
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point(size = .5) + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  theme_classic()
+
+ggsave("plots/28_detection.png", width = 5, height = 3.5)
+```
+
+Gridlines too thick
+
+```{r}
+ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point() + 
+  xlab("weight (1,000 lbs)") +
+  ylab("Miles per gallon") +
+  theme_bw() +
+  theme(panel.grid.minor.y = element_line(color = "gray20", size = 1),
+        panel.grid.major.y = element_line(color = "gray20", size = 2),
+        panel.grid.major.x = element_line(color = "gray20", size = 2),
+        panel.grid.minor.x = element_line(color = "gray20", size = 1))
+
+ggsave("plots/29_detection.png", width = 5, height = 3.5)
+```
+
+Gridlines
+```{r}
+tb %>%
+  filter(country== "Marshall Islands" | country == "Tuvalu" | country == "Kiribati" | country == "Palau") %>%
+  mutate(country = factor(country, levels = c("Kiribati", "Marshall Islands", "Tuvalu", "Palau"))) %>%
+  ggplot(aes(year, incidence_100k)) + 
+  geom_line(aes(group = country, color = country), size = 1.5) +
+  facet_wrap(~country) +
+  theme_classic() + 
+  labs(y = "TB Incidence per 100K") +
+  theme(strip.text.x = element_text(size = 10),
+        axis.text.x = element_text(size = 8),
+        axis.title.x = element_blank(),
+        legend.position = "none")
+
+ggsave("plots/30_tb_time_facet.png", width = 5, height = 3.5)
+
+tb %>%
+  filter(country== "Marshall Islands" | country == "Tuvalu" | country == "Kiribati" | country == "Palau") %>%
+  mutate(country = factor(country, levels = c("Kiribati", "Marshall Islands", "Tuvalu", "Palau"))) %>%
+  ggplot(aes(year, incidence_100k)) + 
+  geom_line(aes(group = country, color = country), size = 1.5) +
+  facet_wrap(~country) +
+  theme_bw() + 
+  labs(y = "TB Incidence per 100K") +
+  theme(strip.text.x = element_text(size = 10),
+        axis.text.x = element_text(size = 8),
+        axis.title.x = element_blank(),
+        legend.position = "none")
+
+ggsave("plots/31_tb_time_facet.png", width = 5, height = 3.5)
+
+# same plot without facets
+tb %>%
+  filter(country== "Marshall Islands" | country == "Tuvalu" | country == "Kiribati" | country == "Palau") %>%
+  mutate(country = factor(country, levels = c("Kiribati", "Marshall Islands", "Tuvalu", "Palau"))) %>%
+  ggplot(aes(year, incidence_100k)) + 
+  geom_line(aes(group = country, color = country), size = 1.5) +
+  #facet_wrap(~country) +
+  theme_bw() + 
+  labs(y = "TB Incidence per 100K") +
+  theme(strip.text.x = element_text(size = 10),
+        axis.text.x = element_text(size = 8),
+        axis.title.x = element_blank())
+
+ggsave("plots/32_tb_time.png", width = 5, height = 3.5)
+```
+
+Include 0 -- yes with length of bars
+
+```{r}
+tb_ordered %>%
+  ggplot(aes(x=TBper100k, y = country)) +
+  geom_col(fill = "black") + 
+  theme_bw() +
+  labs(x = "TB incidence per 100k") +
+  theme(axis.text.y=element_text(size=6),
+        axis.title.y=element_blank())
+
+ggsave("plots/33_tb_length.png", width = 5, height = 3.5)
+
+# now with cars
+mtcars %>%
+  mutate(model = reorder(model, mpg)) %>%
+  arrange(mpg, model) %>%
+  ggplot(aes(x=mpg, y=model)) + 
+  geom_col(fill = "black") + 
+  theme_bw() +
+  labs(x = "Miles per gallon") +
+  theme(axis.text.y=element_text(size=6),
+        axis.title.y=element_blank())
+
+ggsave("plots/34_cars_length.png", width = 5, height = 3.5)
 ```
 
